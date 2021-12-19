@@ -5,20 +5,13 @@ IsingFit <-
     if (family!='binomial') 
       stop ("This procedure is currently only supported for binary (family='binomial') data")
     
-    ## Check to prevent error of lognet() in package glmnet
-    checklognet <- function(y){
-      res <- c() # 0: too little variance, 1: good to go
-      y=as.factor(y)
-      ntab=table(y)
-      minclass=min(ntab)
-      if(minclass<=1) res=0 else res=1
-      return(res)
-    }
-    NodesToAnalyze <- apply(x,2,checklognet) !=0
+    # ## Check to prevent error of lognet() in package glmnet
+    # I think all of the checklognets() function can be replaced by the following
+    NodesToAnalyze <- colSums(x) != 0
+    
     names(NodesToAnalyze) <- colnames(x)
     if (!any(NodesToAnalyze)) stop("No variance in dataset")
-    if (any(!NodesToAnalyze))
-    {
+    if (any(!NodesToAnalyze)) {
       warning(paste("Nodes with too little variance (not allowed):",paste(colnames(x)[!NodesToAnalyze],collapse = ", ")))
     }
     ##
