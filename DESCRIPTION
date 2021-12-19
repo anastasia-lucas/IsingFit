@@ -14,3 +14,4 @@ NeedsCompilation: no
 Packaged: 2016-09-07 09:20:13 UTC; claudiavb
 Repository: CRAN
 Date/Publication: 2016-09-07 13:01:58
+RoxygenNote: 7.1.2
