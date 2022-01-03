@@ -18,3 +18,18 @@ run_glmnet <- function(x, y, family){
   l$nlambdas <- length(l$lambdas)
   return(l)
 }
+
+#' Get counts of beta != 0 to create J
+#'
+#' @description This is an internal function to create matrix J
+#'
+#' @param x dgCMatrix
+#' @param length length of list (= maxlambdas)
+#' @return vector
+#' @noRd
+
+get_counts <- function(x, length){
+  j <- matrix(0, maxlambdas, 1)
+  j[1:ncol(x), 1] <- colSums(x!=0)
+  return(j)
+}

@@ -13,7 +13,7 @@ IsingFit <-
     if (family!='binomial') 
       stop ("This procedure is currently only supported for binary (family='binomial') data")
     
-    # ## Check to prevent error of lognet() in package glmnet
+    ###### Check to prevent error of lognet() in package glmnet ######
     # I think all of the checklognets() function can be replaced by the following
     NodesToAnalyze <- apply(x, 2, function (x) length(unique(x))) > 1 # require >= 2 unique values
     
@@ -22,7 +22,7 @@ IsingFit <-
     if (any(!NodesToAnalyze)) {
       warning(paste("Nodes with too little variance (not allowed):",paste(colnames(x)[!NodesToAnalyze],collapse = ", ")))
     }
-    ##
+    ######## End check ######
     
     x <- as.matrix(x)
     allthemeans <- colMeans(x)
@@ -47,22 +47,38 @@ IsingFit <-
       # TODO %do% is not being exported by foreach package here
       IsingFit:::run_glmnet(x[,-i], x[,i], family = family)
     }
-    # for (i in 1:nvar){
-    #   glmnetRes <-
-    #   a <- glmnet(x[,-i], x[,i], family = family)
-    #   intercepts[[i]] <- a$a0
-    #   betas[[i]] <- a$beta
-    #   lambdas[[i]] <- a$lambda
-    #   nlambdas[i] <- length(lambdas[[i]])
+  
+    
+    maxlambdas <- max(unlist(lapply(glmnetRes, function (x) x$nlambdas)),
+                      na.rm = TRUE)
+      
+    if (progressbar==TRUE) pb <- txtProgressBar(max=nvar, style = 3)
+    
+    P <- logl <- sumlogl <- J <- matrix(0, maxlambdas, nvar)
+    
+    # for (i in 1:nvar)
+    # {
+    #   # TODO requires Matrix library to be loaded why ???
+    #   J[1:ncol(betas[[i]]),i] <- colSums(betas[[i]]!=0)
     # }
     
-    if (progressbar==TRUE) pb <- txtProgressBar(max=nvar, style = 3)
-    P <- logl <- sumlogl <- J <- matrix(0, max(nlambdas), nvar)
-    for (i in 1:nvar)
-    {
-      J[1:ncol(betas[[i]]),i] <- colSums(betas[[i]]!=0)
-    }
-    logl_M <- P_M <- array(0, dim=c(nrow(x),max(nlambdas), nvar) )
+    # TODO check to make sure this should be getting N != 0 and not sum(betas!=0)
+    doParallel::registerDoParallel(cores = cores)
+    
+    J <- foreach::foreach(i = 1:nvar, .packages = c('foreach', 
+                                                    'parallel',
+                                                    'doParallel',
+                                                    'Matrix')) %dopar% {
+                                                              # TODO %do% is not being exported by foreach package here
+                                                              IsingFit:::get_counts(glmnetRes[[i]]$betas, 
+                                                                                    length = maxlambdas)
+                                                            }
+    
+    J <- do.call(cbind, J)
+    
+    # TODO continue
+    
+    logl_M <- P_M <- array(0, dim=c(nrow(x),maxlambdas, nvar) )
     N <- nrow(x)
     for (i in 1:nvar){  # i <- 1
       betas.ii <- as.matrix( betas[[i]] )
@@ -75,7 +91,7 @@ IsingFit <-
       }
       y <- matrix( int.ii , nrow=N , ncol=ncol(y) , byrow=TRUE ) + y
       # number of NAs
-      n_NA <- max(nlambdas)-ncol(y)
+      n_NA <- maxlambdas-ncol(y)
       if (n_NA > 0 ){ 
         for ( vv in 1:n_NA){ 
           y <- cbind( y , NA ) 
