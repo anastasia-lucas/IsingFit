@@ -1,15 +1,23 @@
 IsingFit <-
-  function(x, family='binomial', AND = TRUE, gamma = 0.25, plot = TRUE, progressbar = TRUE, lowerbound.lambda = NA,...){
+  function(x, family='binomial', AND = TRUE, gamma = 0.25, plot = TRUE, 
+           progressbar = TRUE, ncores = 1, lowerbound.lambda = NA,...){
     t0 <- Sys.time()
+
+    # set names
     xNames <- colnames(x)
+    
+    if(is.null(xNames)) {
+      xNames <- rep(paste0("X", 1:ncol(x)))
+    }
+    
     if (family!='binomial') 
       stop ("This procedure is currently only supported for binary (family='binomial') data")
     
     # ## Check to prevent error of lognet() in package glmnet
     # I think all of the checklognets() function can be replaced by the following
-    NodesToAnalyze <- colSums(x) != 0
+    NodesToAnalyze <- apply(x, 2, function (x) length(unique(x))) > 1 # require >= 2 unique values
     
-    names(NodesToAnalyze) <- colnames(x)
+    names(NodesToAnalyze) <- xNames
     if (!any(NodesToAnalyze)) stop("No variance in dataset")
     if (any(!NodesToAnalyze)) {
       warning(paste("Nodes with too little variance (not allowed):",paste(colnames(x)[!NodesToAnalyze],collapse = ", ")))
@@ -20,16 +28,33 @@ IsingFit <-
     allthemeans <- colMeans(x)
     x <- x[,NodesToAnalyze,drop=FALSE]
     nvar <- ncol(x)
-    p <- nvar - 1
-    intercepts <- betas <- lambdas <- list(vector,nvar)
-    nlambdas <- rep(0,nvar)
-    for (i in 1: nvar){
-      a <- glmnet(x[,-i], x[,i], family = family)
-      intercepts[[i]] <- a$a0
-      betas[[i]] <- a$beta
-      lambdas[[i]] <- a$lambda
-      nlambdas[i] <- length(lambdas[[i]])
+    # p <- nvar - 1
+    # intercepts <- betas <- lambdas <- list(vector,nvar)
+    # nlambdas <- rep(0,nvar)
+
+    # Run glmnet on all of the columns
+    cores = min(ncores, 
+                max(1, floor(parallel::detectCores()*0.75)))
+    if(cores < ncores){ 
+      print(paste("Warning: using", cores, "cores due to resource availability"))
     }
+    
+    doParallel::registerDoParallel(cores = cores)
+    
+    glmnetRes <- foreach::foreach(i = 1:nvar, .packages = c('foreach', 
+                                                            'parallel',
+                                                            'doParallel')) %dopar% {
+      # TODO %do% is not being exported by foreach package here
+      IsingFit:::run_glmnet(x[,-i], x[,i], family = family)
+    }
+    # for (i in 1:nvar){
+    #   glmnetRes <-
+    #   a <- glmnet(x[,-i], x[,i], family = family)
+    #   intercepts[[i]] <- a$a0
+    #   betas[[i]] <- a$beta
+    #   lambdas[[i]] <- a$lambda
+    #   nlambdas[i] <- length(lambdas[[i]])
+    # }
     
     if (progressbar==TRUE) pb <- txtProgressBar(max=nvar, style = 3)
     P <- logl <- sumlogl <- J <- matrix(0, max(nlambdas), nvar)
