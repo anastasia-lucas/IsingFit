@@ -29,7 +29,7 @@ run_glmnet <- function(x, y, family){
 #' @noRd
 
 get_counts <- function(x, length){
-  j <- matrix(0, maxlambdas, 1)
+  j <- matrix(0, length, 1)
   j[1:ncol(x), 1] <- colSums(x!=0)
   return(j)
 }
