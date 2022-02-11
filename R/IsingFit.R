@@ -1,6 +1,7 @@
 IsingFit <-
   function(x, family='binomial', AND = TRUE, gamma = 0.25, plot = TRUE, 
-           progressbar = TRUE, ncores = 1, lowerbound.lambda = NA,...){
+           progressbar = TRUE, ncores = 1, forcecores = FALSE,
+           lowerbound.lambda = NA,...){
     t0 <- Sys.time()
 
     # set names
@@ -33,12 +34,16 @@ IsingFit <-
     # nlambdas <- rep(0,nvar)
 
     # Run glmnet on all of the columns
-    cores = min(ncores, 
-                max(1, floor(parallel::detectCores()*0.75)))
-    if(cores < ncores){ 
-      print(paste("Warning: using", cores, "cores due to resource availability"))
+    if(isTRUE(forcecores)){
+      cores = ncores
+    } else {
+      cores = min(ncores, 
+                  max(1, floor(parallel::detectCores()*0.75)))
+      if(cores < ncores){ 
+        print(paste("Warning: using", cores, "cores due to resource availability"))
+      }
     }
-    
+
     doParallel::registerDoParallel(cores = cores)
     
     glmnetRes <- foreach::foreach(i = 1:nvar, .packages = c('foreach', 
