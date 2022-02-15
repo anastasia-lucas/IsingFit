@@ -83,34 +83,47 @@ IsingFit <-
     
     # TODO continue
     
-    logl_M <- P_M <- array(0, dim=c(nrow(x),maxlambdas, nvar) )
-    N <- nrow(x)
-    for (i in 1:nvar){  # i <- 1
-      betas.ii <- as.matrix( betas[[i]] )
-      int.ii <- intercepts[[i]]
-      y <- matrix( 0 , nrow=N , ncol= ncol(betas.ii) ) 
-      xi <- x[,-i]
-      NB <- nrow( betas.ii) # number of rows in beta
-      for (bb in 1:NB){   # bb <- 1
-        y <- y + betas.ii[rep(bb,N),] * xi[,bb]
-      }
-      y <- matrix( int.ii , nrow=N , ncol=ncol(y) , byrow=TRUE ) + y
-      # number of NAs
-      n_NA <- maxlambdas-ncol(y)
-      if (n_NA > 0 ){ 
-        for ( vv in 1:n_NA){ 
-          y <- cbind( y , NA ) 
-        } 
-      }
-      # calculate P matrix
-      P_M[,,i] <- exp(y*x[,i])/(1+exp(y))
-      logl_M[,,i] <- log(P_M[,,i])  
-      if (progressbar==TRUE) setTxtProgressBar(pb, i)
-    }
+    # logl_M <- P_M <- array(0, dim=c(nrow(x),maxlambdas, nvar) )
+    # N <- nrow(x)
+    # for (i in 1:nvar){  # i <- 1
+    #   betas.ii <- as.matrix( betas[[i]] )
+    #   int.ii <- intercepts[[i]]
+    #   y <- matrix( 0 , nrow=N , ncol= ncol(betas.ii) ) 
+    #   xi <- x[,-i]
+    #   NB <- nrow( betas.ii) # number of rows in beta
+    #   for (bb in 1:NB){   # bb <- 1
+    #     y <- y + betas.ii[rep(bb,N),] * xi[,bb]
+    #   }
+    #   y <- matrix( int.ii , nrow=N , ncol=ncol(y) , byrow=TRUE ) + y
+    #   # number of NAs
+    #   n_NA <- maxlambdas-ncol(y)
+    #   if (n_NA > 0 ){ 
+    #     for ( vv in 1:n_NA){ 
+    #       y <- cbind( y , NA ) 
+    #     } 
+    #   }
+    #   # calculate P matrix
+    #   P_M[,,i] <- exp(y*x[,i])/(1+exp(y))
+    #   logl_M[,,i] <- log(P_M[,,i])  
+    #   if (progressbar==TRUE) setTxtProgressBar(pb, i)
+    # }
     
-    logl_Msum <- colSums( logl_M , 1, na.rm=FALSE )
-    if (progressbar==TRUE) close(pb)
-    sumlogl <- logl_Msum 
+    doParallel::registerDoParallel(cores = cores)
+    
+    P_M <- foreach::foreach(i = 1:nvar, .packages = c('foreach', 
+                                                      'parallel',
+                                                      'doParallel',
+                                                      'Matrix')) %dopar% {
+                                                      # TODO %do% is not being exported by foreach package here
+                                                      IsingFit:::construct_P(betas = glmnetRes[[i]]$betas, 
+                                                                             intercepts = glmnetRes[[i]]$intercepts,
+                                                                             N = nrow(x),
+                                                                             x = x,
+                                                                             maxlambdas = maxlambdas)
+                                                    }
+    
+    sumlogl <- do.call(cbind, P_M)
+    
     sumlogl[sumlogl==0]=NA
     penalty <- J * log(nrow(x)) + 2 * gamma * J * log(p)
     EBIC <- -2 * sumlogl + penalty
@@ -130,7 +143,7 @@ IsingFit <-
     for(i in 1:length(lambda.opt)){
       lambda.val[i] <- lambda.mat[lambda.opt[i],i]
       thresholds[i] <- intercepts[[i]][lambda.opt[i]]
-    }
+    # }
     weights.opt <- matrix(,nvar,nvar)
     for (i in 1:nvar){
       weights.opt[i,-i] <- betas[[i]][,lambda.opt[i]]
