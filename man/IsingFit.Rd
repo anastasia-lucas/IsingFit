@@ -22,9 +22,6 @@ anything between 0 and 1. Defaults to .25.}
 
 \item{plot}{Logical. Should the resulting network be plotted?}
 
-\item{progressbar}{Logical. Should the pbar be plotted in order to see the
-progress of the estimation procedure?}
-
 \item{ncores}{number of cores to use for distributed computing, default: 1}
 
 \item{forcecores}{logical, allows IsingFit to use more than 75% of all

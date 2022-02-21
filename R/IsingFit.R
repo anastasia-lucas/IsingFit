@@ -19,8 +19,6 @@
 #' @param gamma A value of hyperparameter gamma in the extended BIC. Can be
 #' anything between 0 and 1. Defaults to .25.
 #' @param plot Logical. Should the resulting network be plotted?
-#' @param progressbar Logical. Should the pbar be plotted in order to see the
-#' progress of the estimation procedure?
 #' @param lowerbound.lambda The minimum value of tuning parameter lambda
 #' (regularization parameter). Can be used to compare networks that are based on
 #' different sample sizes. The lowerbound.lambda is based on the number of
@@ -79,8 +77,7 @@
 IsingFit <-
   # TODO: add progressbar back in
   function(x, family='binomial', AND = TRUE, gamma = 0.25, plot = TRUE,
-           progressbar = TRUE, ncores = 1, forcecores = FALSE,
-           lowerbound.lambda = NA,...){
+           ncores = 1, forcecores = FALSE, lowerbound.lambda = NA,...){
     t0 <- Sys.time()
 
     # set names
@@ -136,7 +133,7 @@ IsingFit <-
     maxlambdas <- max(unlist(lapply(glmnetRes, function (x) x$nlambdas)),
                       na.rm = TRUE)
 
-    if (progressbar==TRUE) pb <- txtProgressBar(max=nvar, style = 3)
+    # if (progressbar==TRUE) pb <- txtProgressBar(max=nvar, style = 3)
 
     P <- logl <- sumlogl <- J <- matrix(0, maxlambdas, nvar)
 
